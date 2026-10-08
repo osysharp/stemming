@@ -1,0 +1,53 @@
+// Osysharp.Stemming — two inflections of one word meet in their stem; words in other languages pass through.
+
+using Osysharp.Stemming;
+
+string S(string word, string language) { return new Stemmer().Stem(word, language); }
+
+[Test]
+void swedish_inflections_meet_in_their_stem() {
+  Assert.Equal("betalning", S("betalningar", "sv"));
+  Assert.Equal("betalning", S("betalningen", "sv"));
+  Assert.Equal("betalning", S("betalning", "sv"));
+  Assert.Equal("faktur", S("fakturor", "sv"));
+  Assert.Equal("faktur", S("faktura", "sv"));
+  Assert.Equal(S("leveranser", "sv-SE"), S("leveransen", "sv"));
+}
+
+[Test]
+void arabic_article_conjunction_and_suffixes_are_taken_off() {
+  // "with the card" and "the cards" share a stem.
+  Assert.Equal(S("البطاقات", "ar"), S("بالبطاقة", "ar"));
+  // "the invoice" and "my invoice".
+  Assert.Equal(S("الفاتورة", "ar"), S("فاتورتي", "ar"));
+  // "and the payment" and "payment".
+  Assert.Equal(S("دفع", "ar"), S("والدفع", "ar"));
+  // A short vowel mark changes nothing.
+  Assert.Equal(S("كتاب", "ar"), S("كِتَاب", "ar"));
+}
+
+[Test]
+void danish_and_norwegian_inflections_meet_in_their_stem() {
+  Assert.Equal(S("betalinger", "da"), S("betalingerne", "da"));
+  Assert.Equal(S("betalinger", "nb"), S("betalingene", "nb"));
+}
+
+[Test]
+void english_plurals_and_endings_meet_in_their_stem() {
+  Assert.Equal("payment", S("payments", "en"));
+  Assert.Equal("stop", S("stopped", "en"));
+  Assert.Equal(S("refund", "en"), S("refunding", "en"));
+  Assert.Equal("policy", S("policies", "en"));
+}
+
+[Test]
+void a_text_becomes_its_stems_in_order() {
+  Assert.Equal("så betal du din faktur", new Stemmer().StemText("Så betalar du dina fakturor?", "sv"));
+}
+
+[Test]
+void a_language_with_no_stemmer_is_matched_word_for_word() {
+  Assert.Equal("zahlungen", S("Zahlungen", "de"));
+  Assert.False(new Stemmer().Knows("de"));
+  Assert.True(new Stemmer().Knows("sv-FI"));
+}

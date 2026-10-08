@@ -1,0 +1,5 @@
+// The producer's test project for Osysharp.Stemming — words only; no rows, no pages.
+app StemmingKitTests {
+  tests "**/*.test.osy";
+  use Osysharp.Stemming@0;
+}

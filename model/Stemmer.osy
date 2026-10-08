@@ -1,0 +1,206 @@
+namespace Osysharp.Stemming;
+
+/// Turns words into their stems, per language. A stem is what two inflections of a word share — it need not be a word
+/// itself ("faktur", "betal").
+public class Stemmer {
+  /// The words of `text` as their stems in `language`, in order, separated by spaces — what to index beside a text, and
+  /// what to match a stemmed query against. Words are runs of letters and digits, lower-cased.
+  public string StemText(string text, string language) {
+    List<string> stems = [];
+    foreach (var w in WordsOf(text)) { stems.Add(Stem(w, language)); }
+    return string.Join(" ", stems);
+  }
+
+  /// The words of `text`, lower-cased: runs of letters and digits.
+  public List<string> WordsOf(string text) {
+    List<string> words = [];
+    var word = "";
+    foreach (var c in (text ?? "").ToLower() + " ") {
+      if (char.IsLetterOrDigit(c)) { word = word + c; continue; }
+      if (word != "") { words.Add(word); }
+      word = "";
+    }
+    return words;
+  }
+
+  /// One word's stem in `language` (a BCP-47 tag: "sv", "sv-SE", "ar"). A language without a stemmer here answers the
+  /// word lower-cased.
+  public string Stem(string word, string language) {
+    var w = word.Trim().ToLower();
+    var l = BaseLanguage(language);
+    if (l == "sv") { return StemSwedish(w); }
+    if (l == "da") { return StemDanish(w); }
+    if (l == "nb" || l == "no" || l == "nn") { return StemNorwegian(w); }
+    if (l == "en") { return StemEnglish(w); }
+    if (l == "ar") { return StemArabic(w); }
+    return w;
+  }
+
+  /// Does a stemmer here know `language`?
+  public bool Knows(string language) {
+    var l = BaseLanguage(language);
+    return l == "sv" || l == "da" || l == "nb" || l == "no" || l == "nn" || l == "en" || l == "ar";
+  }
+}
+
+/// "sv-SE" → "sv".
+string BaseLanguage(string language) {
+  var t = (language ?? "").Trim().ToLower();
+  var dash = t.IndexOf("-");
+  return dash < 0 ? t : t.Substring(0, dash);
+}
+
+/// Where R1 begins — after the first non-vowel that follows a vowel, and never before the third letter (the Snowball
+/// rule for the Scandinavian languages).
+int RegionOne(string w, string vowels) {
+  var at = w.Length;
+  for (var i = 1; i < w.Length; i++) {
+    if (!vowels.Contains(w.Substring(i, 1)) && vowels.Contains(w.Substring(i - 1, 1))) { at = i + 1; break; }
+  }
+  return at < 3 ? 3 : at;
+}
+
+/// The longest of `suffixes` that `w` ends with inside R1 (`r1` on), or "".
+string LongestIn(string w, int r1, List<string> suffixes) {
+  var best = "";
+  foreach (var s in suffixes) {
+    if (s.Length > best.Length && w.EndsWith(s) && w.Length - s.Length >= r1) { best = s; }
+  }
+  return best;
+}
+
+string Cut(string w, int n) { return w.Substring(0, w.Length - n); }
+
+// ── Swedish (Snowball) ───────────────────────────────────────────────────────────────────────────────────────────
+
+string StemSwedish(string w) {
+  var vowels = "aeiouyäåö";
+  if (w.Length < 3) { return w; }
+  var r1 = RegionOne(w, vowels);
+  var s1 = LongestIn(w, r1, ["a", "arna", "erna", "heterna", "orna", "ad", "e", "ade", "ande", "arne", "are", "aste", "en",
+    "anden", "aren", "heten", "ern", "ar", "er", "heter", "or", "as", "arnas", "ernas", "ornas", "es", "ades", "andes", "ens",
+    "arens", "hetens", "erns", "at", "andet", "het", "ast"]);
+  if (s1 != "") { w = Cut(w, s1.Length); }
+  else if (w.EndsWith("s") && w.Length - 1 >= r1 && w.Length >= 2 && "bcdfghjklmnoprtvy".Contains(w.Substring(w.Length - 2, 1))) {
+    w = Cut(w, 1);
+  }
+  foreach (var d in ["dd", "gd", "nn", "dt", "gt", "kt", "tt"]) {
+    if (w.EndsWith(d) && w.Length - 2 >= r1) { w = Cut(w, 1); break; }
+  }
+  var s3 = LongestIn(w, r1, ["lig", "ig", "els", "löst", "fullt"]);
+  if (s3 == "löst") { w = Cut(w, 1); }
+  else if (s3 == "fullt") { w = Cut(w, 1); }
+  else if (s3 != "") { w = Cut(w, s3.Length); }
+  return w;
+}
+
+// ── Danish (Snowball) ────────────────────────────────────────────────────────────────────────────────────────────
+
+string StemDanish(string w) {
+  var vowels = "aeiouyæåø";
+  if (w.Length < 3) { return w; }
+  var r1 = RegionOne(w, vowels);
+  var s1 = LongestIn(w, r1, ["hed", "ethed", "ered", "e", "erede", "ende", "erende", "ene", "erne", "ere", "en", "heden",
+    "eren", "er", "heder", "erer", "heds", "es", "endes", "erendes", "enes", "ernes", "eres", "ens", "hedens", "erens", "ers",
+    "ets", "erets", "et", "eret"]);
+  if (s1 != "") { w = Cut(w, s1.Length); }
+  else if (w.EndsWith("s") && w.Length - 1 >= r1 && w.Length >= 2 && "abcdfghjklmnoprtvyzå".Contains(w.Substring(w.Length - 2, 1))) {
+    w = Cut(w, 1);
+  }
+  w = DanishConsonantPair(w, r1);
+  if (w.EndsWith("igst")) { w = Cut(w, 2); }
+  var s3 = LongestIn(w, r1, ["ig", "lig", "elig", "els", "løst"]);
+  if (s3 == "løst") { w = Cut(w, 1); }
+  else if (s3 != "") { w = DanishConsonantPair(Cut(w, s3.Length), r1); }
+  // Undouble a final consonant pair inside R1.
+  if (w.Length >= 2 && w.Length - 1 >= r1) {
+    var last = w.Substring(w.Length - 1, 1);
+    if (!vowels.Contains(last) && w.Substring(w.Length - 2, 1) == last) { w = Cut(w, 1); }
+  }
+  return w;
+}
+
+string DanishConsonantPair(string w, int r1) {
+  foreach (var d in ["gd", "dt", "gt", "kt"]) {
+    if (w.EndsWith(d) && w.Length - 2 >= r1) { return Cut(w, 1); }
+  }
+  return w;
+}
+
+// ── Norwegian (Snowball) ─────────────────────────────────────────────────────────────────────────────────────────
+
+string StemNorwegian(string w) {
+  var vowels = "aeiouyæåø";
+  if (w.Length < 3) { return w; }
+  var r1 = RegionOne(w, vowels);
+  var s1 = LongestIn(w, r1, ["a", "e", "ede", "ande", "ende", "ane", "ene", "hetene", "en", "heten", "ar", "er", "heter", "as",
+    "es", "edes", "endes", "enes", "hetenes", "ens", "hetens", "ers", "ets", "et", "het", "ast", "erte", "ert"]);
+  if (s1 == "erte" || s1 == "ert") { w = Cut(w, s1.Length) + "er"; }
+  else if (s1 != "") { w = Cut(w, s1.Length); }
+  else if (w.EndsWith("s") && w.Length - 1 >= r1 && w.Length >= 2) {
+    var before = w.Substring(w.Length - 2, 1);
+    var kAlone = before == "k" && w.Length >= 3 && !vowels.Contains(w.Substring(w.Length - 3, 1));
+    if ("bcdfghjlmnoprtvyz".Contains(before) || kAlone) { w = Cut(w, 1); }
+  }
+  foreach (var d in ["dt", "vt"]) {
+    if (w.EndsWith(d) && w.Length - 2 >= r1) { w = Cut(w, 1); break; }
+  }
+  var s3 = LongestIn(w, r1, ["leg", "eleg", "ig", "eig", "lig", "elig", "els", "lov", "elov", "slov", "hetslov"]);
+  if (s3 != "") { w = Cut(w, s3.Length); }
+  return w;
+}
+
+// ── English (a light stemmer: plurals, -ing, -ed, -ly) ─────────────────────────────────────────────────────────────
+
+string StemEnglish(string w) {
+  if (w.Length <= 3) { return w; }
+  if (w.EndsWith("sses")) { w = Cut(w, 2); }
+  else if (w.EndsWith("ies") && w.Length > 4) { w = Cut(w, 3) + "y"; }
+  else if (w.EndsWith("s") && !w.EndsWith("ss") && !w.EndsWith("us") && !w.EndsWith("is")) { w = Cut(w, 1); }
+  var vowels = "aeiouy";
+  foreach (var suffix in ["ingly", "edly", "ing", "ed"]) {
+    if (w.EndsWith(suffix) && w.Length - suffix.Length >= 3) {
+      var stem = Cut(w, suffix.Length);
+      var hasVowel = false;
+      foreach (var c in stem) { if (vowels.Contains(c.ToString())) { hasVowel = true; } }
+      if (hasVowel) {
+        w = stem;
+        // "stopped" → "stop", "planning" → "plan" — but "fall", "pass" and "buzz" keep their pairs.
+        var last = w.Substring(w.Length - 1, 1);
+        if (w.Length >= 2 && w.Substring(w.Length - 2, 1) == last && !"aeioulsz".Contains(last)) { w = Cut(w, 1); }
+      }
+      break;
+    }
+  }
+  if (w.EndsWith("ly") && w.Length > 4) { w = Cut(w, 2); }
+  return w;
+}
+
+// ── Arabic (a light stemmer: normalised letters, the conjunction and the article, the common suffixes) ──────────────
+
+string StemArabic(string w) {
+  // Normalise: no short vowels or tatweel; the alef forms as alef, alef maqsura as ya, ta marbuta as ha.
+  var n = "";
+  foreach (var c in w) {
+    var u = (int)c;
+    if ((u >= 0x64B && u <= 0x652) || u == 0x640) { continue; }
+    if (u == 0x623 || u == 0x625 || u == 0x622) { n = n + "ا"; continue; }
+    if (u == 0x649) { n = n + "ي"; continue; }
+    if (u == 0x629) { n = n + "ه"; continue; }
+    n = n + c;
+  }
+  // "and" before a word long enough to keep a stem.
+  if (n.StartsWith("و") && n.Length >= 4) { n = n.Substring(1); }
+  // The definite article, alone or after "and", "with", "as", "so" or "for".
+  foreach (var article in ["وال", "بال", "كال", "فال", "ال", "لل"]) {
+    if (n.StartsWith(article) && n.Length - article.Length >= 2) { n = n.Substring(article.Length); break; }
+  }
+  // A ta marbuta noun with a possessive ending ("my invoice", "its card") — the ta and the pronoun go together.
+  foreach (var owned in ["تها", "تهم", "تكم", "تنا", "تي", "تك", "ته"]) {
+    if (n.EndsWith(owned) && n.Length - owned.Length >= 2) { return Cut(n, owned.Length); }
+  }
+  foreach (var suffix in ["ها", "ان", "ات", "ون", "ين", "يه", "ه", "ي"]) {
+    if (n.EndsWith(suffix) && n.Length - suffix.Length >= 2) { n = Cut(n, suffix.Length); }
+  }
+  return n;
+}
