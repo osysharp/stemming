@@ -10,8 +10,8 @@
 //
 // Deterministic, offline and fast: a stem is a pure function of the word and its language.
 package Osysharp.Stemming {
-  version     "0.1.0";
-  minPlatform "0.9.0";
+  version     "0.2.0";
+  minPlatform "0.14.0";
   summary     "words in their base form for search — Snowball stemmers for English, Swedish, Danish and Norwegian and a light Arabic stemmer, so an inflected query finds the other forms of its words; any other language matched word for word.";
   model "model/*.osy";
   tests "tests";

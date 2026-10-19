@@ -2,16 +2,14 @@
   "platform": {
     "version": "0.9.0"
   },
-  "entries": [
-    {
-      "name": "Osysharp.Stemming",
-      "kind": "package",
-      "version": "0.1.0",
-      "hash": "sha256:6d211af8b61b1ee729100f10df8baf329e8f9c6c7316ade49120e12ff688afc0",
-      "minPlatform": "0.9.0",
-      "shadow": "app-forkable",
-      "source": "workspace:kits/stemming",
-      "constraint": "0"
-    }
-  ]
+  "entries": [],
+  "bridges": {
+    "searched": [
+      "workspace",
+      "platform"
+    ],
+    "skipped": [
+      "github: offline \u2014 the public catalog was not searched for bridges. Run \u0060osy lock\u0060 with a network to look."
+    ]
+  }
 }
