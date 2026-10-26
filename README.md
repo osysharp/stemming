@@ -45,3 +45,64 @@ like any other text.
 
 Inflections meeting in their stem in every language it knows, a whole text stemmed in order, and words of other
 languages passing through unchanged.
+
+## Examples
+
+Taken from this package's own tests, which compile and run on every release.
+
+```osy
+using Osysharp.Stemming;
+
+[Test]
+void swedish_inflections_meet_in_their_stem() {
+  Assert.Equal("betalning", S("betalningar", "sv"));
+  Assert.Equal("betalning", S("betalningen", "sv"));
+  Assert.Equal("betalning", S("betalning", "sv"));
+  Assert.Equal("faktur", S("fakturor", "sv"));
+  Assert.Equal("faktur", S("faktura", "sv"));
+  Assert.Equal(S("leveranser", "sv-SE"), S("leveransen", "sv"));
+}
+```
+
+From [`tests/stems.test.osy`](tests/stems.test.osy).
+
+```osy
+using Osysharp.Stemming;
+
+[Test]
+void arabic_article_conjunction_and_suffixes_are_taken_off() {
+  // "with the card" and "the cards" share a stem.
+  Assert.Equal(S("البطاقات", "ar"), S("بالبطاقة", "ar"));
+  // "the invoice" and "my invoice".
+  Assert.Equal(S("الفاتورة", "ar"), S("فاتورتي", "ar"));
+  // "and the payment" and "payment".
+  Assert.Equal(S("دفع", "ar"), S("والدفع", "ar"));
+  // A short vowel mark changes nothing.
+  Assert.Equal(S("كتاب", "ar"), S("كِتَاب", "ar"));
+}
+```
+
+From [`tests/stems.test.osy`](tests/stems.test.osy).
+
+```osy
+using Osysharp.Stemming;
+
+[Test]
+void danish_and_norwegian_inflections_meet_in_their_stem() {
+  Assert.Equal(S("betalinger", "da"), S("betalingerne", "da"));
+  Assert.Equal(S("betalinger", "nb"), S("betalingene", "nb"));
+}
+```
+
+From [`tests/stems.test.osy`](tests/stems.test.osy).
+
+## Learn more
+
+- [The Osysharp.Stemming reference](https://osysharp.com/reference/ui/stemming-kit/)
+- [Osysharp.Stemming in the package catalogue](https://osysharp.com/packages/#osysharp-stemming)
+- [The Osy# reference](https://osysharp.com/reference/) — the language, the runtime and every kit
+- [`llms-full.txt`](https://osysharp.com/llms-full.txt) — the whole reference and specification as one Markdown file, for a coding agent
+
+## Licence
+
+MIT — see [`LICENSE`](LICENSE).
